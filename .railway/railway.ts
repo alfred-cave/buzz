@@ -3,9 +3,9 @@ import {
   defineRailway,
   github,
   postgres,
+  preserve,
   project,
   redis,
-  ref,
   service,
 } from "railway/iac";
 
@@ -23,15 +23,17 @@ const dockerBuild = {
 export default defineRailway(() => {
   const database = postgres("Postgres");
   const cache = redis("Redis");
-  const media = bucket("Media", { region: "iad" });
+  const media = bucket("Buzz Media", { region: "iad" });
 
   const pairingRelay = service("Pairing Relay", {
     source: buzzSource,
     build: dockerBuild,
     start: "/usr/local/bin/buzz-pair-relay",
-    deploy: {
-      restartPolicyType: "ON_FAILURE",
-      restartPolicyMaxRetries: 10,
+    networking: {
+      privateNetworkEndpoint: "pairing-relay",
+      serviceDomains: {
+        "pairing-relay-production-477f.up.railway.app": { port: 5000 },
+      },
     },
     env: {
       BUZZ_PAIR_RELAY_BIND_ADDR: "0.0.0.0:5000",
@@ -44,9 +46,11 @@ export default defineRailway(() => {
     build: dockerBuild,
     healthcheck: "/_readiness",
     healthcheckTimeout: 300,
-    deploy: {
-      restartPolicyType: "ON_FAILURE",
-      restartPolicyMaxRetries: 10,
+    networking: {
+      privateNetworkEndpoint: "buzz-relay",
+      serviceDomains: {
+        "buzz-relay-production-86ca.up.railway.app": { port: 3000 },
+      },
     },
     env: {
       BUZZ_ALLOW_NIP_OA_AUTH: "true",
@@ -54,24 +58,18 @@ export default defineRailway(() => {
       BUZZ_BIND_ADDR: "0.0.0.0:3000",
       BUZZ_CORS_ORIGINS: `tauri://localhost,http://tauri.localhost,https://\${{RAILWAY_PUBLIC_DOMAIN}}`,
       BUZZ_GIT_CONFORMANCE_PROBE: "true",
-      BUZZ_GIT_HOOK_HMAC_SECRET: {
-        generator: 'secret(64, "abcdef0123456789")',
-        isSealed: true,
-      },
+      BUZZ_GIT_HOOK_HMAC_SECRET: preserve(),
       BUZZ_MEDIA_BASE_URL: `https://\${{RAILWAY_PUBLIC_DOMAIN}}/media`,
-      BUZZ_PAIRING_RELAY_URL: `wss://\${{Pairing Relay.RAILWAY_PUBLIC_DOMAIN}}`,
-      BUZZ_RELAY_PRIVATE_KEY: {
-        generator: 'secret(64, "123456789abcdef")',
-        isSealed: true,
-      },
+      BUZZ_PAIRING_RELAY_URL: preserve(),
+      BUZZ_RELAY_PRIVATE_KEY: preserve(),
       BUZZ_REQUIRE_AUTH_TOKEN: "true",
       BUZZ_REQUIRE_RELAY_MEMBERSHIP: "true",
-      BUZZ_S3_ACCESS_KEY: ref(media, "ACCESS_KEY_ID"),
+      BUZZ_S3_ACCESS_KEY: preserve(),
       BUZZ_S3_ADDRESSING_STYLE: "virtual",
-      BUZZ_S3_BUCKET: ref(media, "BUCKET"),
-      BUZZ_S3_ENDPOINT: ref(media, "ENDPOINT"),
-      BUZZ_S3_REGION: ref(media, "REGION"),
-      BUZZ_S3_SECRET_KEY: ref(media, "SECRET_ACCESS_KEY"),
+      BUZZ_S3_BUCKET: preserve(),
+      BUZZ_S3_ENDPOINT: preserve(),
+      BUZZ_S3_REGION: preserve(),
+      BUZZ_S3_SECRET_KEY: preserve(),
       DATABASE_URL: database.env.DATABASE_URL,
       PORT: "3000",
       REDIS_URL: cache.env.REDIS_URL,

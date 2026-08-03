@@ -5,7 +5,7 @@
 - Buzz Relay and Pairing Relay, both built from `alfred-cave/buzz` `main`
 - Railway-managed PostgreSQL and Redis
 - a Railway object-storage bucket for media and Git objects
-- generated, sealed relay and HMAC secrets
+- relay, HMAC, and bucket credentials preserved in Railway (never committed)
 - closed membership owned by the configured public Nostr key
 
 The file is evaluated by Railway's TypeScript IaC SDK. The SDK is pinned in
@@ -22,15 +22,16 @@ railway config apply
 
 `config apply` creates billable Railway resources, so review the plan first.
 
-Railway-generated domains are intentionally not managed by IaC. Create them
-once after the first apply, then redeploy so the generated domain variables are
-available to both services:
+The current Railway-generated domains are recorded in `railway.ts` because the
+beta IaC importer otherwise plans to remove their networking configuration.
+When cloning this configuration into a different Railway project, replace those
+domains and bootstrap the variables marked with `preserve()` before deploying.
+
+For a new project, create the domains with:
 
 ```bash
 railway domain --service "Pairing Relay" --port 5000
 railway domain --service "Buzz Relay" --port 3000
-railway redeploy --service "Pairing Relay" --yes
-railway redeploy --service "Buzz Relay" --yes
 ```
 
 The Buzz desktop client connects to the URL printed for `Buzz Relay`, changing

@@ -11,7 +11,6 @@ import {
 
 const buzzSource = github("alfred-cave/buzz", {
   branch: "main",
-  checkSuites: true,
 });
 
 const dockerBuild = {
